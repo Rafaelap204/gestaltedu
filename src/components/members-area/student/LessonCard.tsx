@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Video, FileText, Download, CheckCircle2, Play, Clock } from 'lucide-react'
 
 interface LessonWithProgress {
@@ -50,21 +49,18 @@ export function LessonCard({
   primaryColor,
   isDark,
 }: LessonCardProps) {
-  const router = useRouter()
   const typeInfo = getLessonTypeInfo(lesson)
   const TypeIcon = typeInfo.icon
   const cardBg = isDark ? 'bg-[#1e1e3a] hover:bg-[#252550]' : 'bg-white hover:bg-brand-gray-50'
   const textColor = isDark ? 'text-white' : 'text-brand-gray-900'
   const subtextColor = isDark ? 'text-brand-gray-400' : 'text-brand-gray-500'
 
-  const handleClick = () => {
-    router.push(`/members-area/${courseId}/watch?lesson=${lesson.id}`)
-  }
+  const watchUrl = `/members-area/${courseId}/watch?lesson=${lesson.id}`
 
   return (
-    <div
-      onClick={handleClick}
-      className={`flex-shrink-0 w-48 sm:w-56 rounded-xl overflow-hidden border transition-all duration-200 hover:scale-[1.03] hover:shadow-lg group cursor-pointer relative z-10 ${
+    <Link
+      href={watchUrl}
+      className={`flex-shrink-0 w-48 sm:w-56 rounded-xl overflow-hidden border transition-all duration-200 hover:scale-[1.03] hover:shadow-lg group cursor-pointer relative z-10 block ${
         isDark ? 'border-brand-gray-700' : 'border-brand-gray-200'
       } ${cardBg}`}
     >
@@ -125,6 +121,6 @@ export function LessonCard({
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

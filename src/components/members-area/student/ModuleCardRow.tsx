@@ -150,9 +150,9 @@ export function ModuleCardRow({
           <ChevronRight size={20} />
         </button>
 
-        {/* Gradient overlays - reduced width to not block clicks */}
-        <div className={`absolute left-0 top-0 bottom-2 w-4 pointer-events-none bg-gradient-to-r ${isDark ? 'from-[#141425]' : 'from-brand-gray-50'} to-transparent`} />
-        <div className={`absolute right-0 top-0 bottom-2 w-4 pointer-events-none bg-gradient-to-l ${isDark ? 'from-[#141425]' : 'from-brand-gray-50'} to-transparent`} />
+        {/* Gradient overlays - pointer-events-none ensures clicks pass through */}
+        <div className={`absolute left-0 top-0 bottom-4 w-8 pointer-events-none bg-gradient-to-r ${isDark ? 'from-[#141425]' : 'from-brand-gray-50'} to-transparent z-20`} />
+        <div className={`absolute right-0 top-0 bottom-4 w-8 pointer-events-none bg-gradient-to-l ${isDark ? 'from-[#141425]' : 'from-brand-gray-50'} to-transparent z-20`} />
       </div>
     </div>
   )
