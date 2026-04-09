@@ -82,7 +82,7 @@ export function MyCoursesTabs({
       <div>
         {currentEnrollments.length === 0 ? (
           <EmptyState
-            icon={BookOpen}
+            iconName="BookOpen"
             title={
               activeTab === "active"
                 ? "Nenhum curso em andamento"

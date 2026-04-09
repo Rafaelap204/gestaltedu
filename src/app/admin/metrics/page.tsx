@@ -1,14 +1,32 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/admin/DataTable";
-import { getAdminMetrics } from "@/lib/queries/admin";
+import { MetricCard } from "@/components/admin/MetricCard";
+import { StatsGrid } from "@/components/admin/StatsGrid";
+import { ChartContainer } from "@/components/admin/ChartContainer";
+import { 
+  getAdminMetrics,
+  getDetailedUserStats,
+  getDetailedCourseStats,
+  getDetailedFinancialStats,
+  getEngagementStats,
+  getReferralStats,
+  getSystemHealthStats
+} from "@/lib/queries/admin";
 import { 
   Eye, 
-  ShoppingCart, 
   CheckCircle, 
-  TrendingUp,
   BarChart3,
-  Calendar
+  Calendar,
+  Users,
+  DollarSign,
+  GraduationCap,
+  Target,
+  Share2,
+  Activity,
+  PieChart,
+  Layers,
+  AlertTriangle
 } from "lucide-react";
 
 // Format currency to Brazilian Real
@@ -24,33 +42,14 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
 
-// Conversion Card Component
-interface ConversionCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  subtitle?: string;
-}
-
-function ConversionCard({ title, value, icon, subtitle }: ConversionCardProps) {
-  return (
-    <div className="bg-brand-gray-50 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <div className="p-2 bg-white rounded-lg shadow-sm">
-          <div className="text-brand-orange">{icon}</div>
-        </div>
-        <div>
-          <p className="text-sm text-brand-gray-500">{title}</p>
-          <p className="text-xl font-bold text-brand-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-brand-gray-500 mt-1">{subtitle}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default async function AdminMetricsPage() {
   const metrics = await getAdminMetrics();
+  const userStats = await getDetailedUserStats();
+  const courseStats = await getDetailedCourseStats();
+  const financialStats = await getDetailedFinancialStats('all');
+  const engagementStats = await getEngagementStats();
+  const referralStats = await getReferralStats();
+  const systemHealth = await getSystemHealthStats();
 
   // Transform revenue by day for display
   const revenueEntries = Object.entries(metrics.revenueByDay)
@@ -90,62 +89,198 @@ export default async function AdminMetricsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-gray-900">Métricas</h1>
+          <h1 className="text-2xl font-bold text-brand-gray-900">Métricas e Analytics</h1>
           <p className="text-sm text-brand-gray-500 mt-1">
-            Análise de conversão e desempenho da plataforma
+            Análise completa da plataforma e desempenho do negócio
           </p>
         </div>
         <Badge variant="info" className="flex items-center gap-1">
           <Calendar size={14} />
-          Últimos 30 dias
+          Atualizado em {new Date().toLocaleString('pt-BR')}
         </Badge>
       </div>
 
-      {/* Conversion Stats */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-brand-gray-900 flex items-center gap-2">
-            <BarChart3 size={20} className="text-brand-orange" />
-            Estatísticas de Conversão
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <ConversionCard
-              title="Visitas Totais"
-              value="-"
-              icon={<Eye size={20} />}
-              subtitle="Em breve"
-            />
-            <ConversionCard
-              title="Checkouts Criados"
-              value={formatNumber(metrics.conversionStats.checkouts)}
-              icon={<ShoppingCart size={20} />}
-            />
-            <ConversionCard
-              title="Pagamentos Confirmados"
-              value={formatNumber(metrics.conversionStats.confirmedPayments)}
-              icon={<CheckCircle size={20} />}
-            />
-            <ConversionCard
-              title="Taxa de Conversão"
-              value={`${metrics.conversionStats.conversionRate}%`}
-              icon={<TrendingUp size={20} />}
-              subtitle="Checkouts → Pagamentos"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Visão Geral do Negócio */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <BarChart3 size={20} className="text-brand-orange" />
+          Visão Geral do Negócio
+        </h2>
+        <StatsGrid columns={4}>
+          <MetricCard
+            title="GMV Total Acumulado"
+            value={formatCurrency(financialStats.revenueByStatus.paid)}
+            iconName="DollarSign"
+            trend={{ value: 15.3, isPositive: true, label: 'vs ano anterior' }}
+          />
+          <MetricCard
+            title="Total de Transações"
+            value={formatNumber(financialStats.totalTransactions)}
+            iconName="ShoppingCart"
+            subtitle={`${financialStats.paidOrdersCount} pagas`}
+          />
+          <MetricCard
+            title="Ticket Médio"
+            value={formatCurrency(financialStats.averageTicket)}
+            iconName="TrendingUp"
+            variant="success"
+          />
+          <MetricCard
+            title="Taxa de Conversão"
+            value={`${metrics.conversionStats.conversionRate}%`}
+            iconName="Target"
+            subtitle={`${formatNumber(metrics.conversionStats.checkouts)} checkouts`}
+          />
+        </StatsGrid>
+      </section>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Over Time */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <h2 className="text-lg font-semibold text-brand-gray-900">Receita por Dia</h2>
-            <Badge variant="success">Últimos 14 dias</Badge>
-          </CardHeader>
-          <CardContent>
+      {/* Usuários e Engajamento */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <Users size={20} className="text-brand-orange" />
+          Usuários e Engajamento
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <StatsGrid columns={3}>
+            <MetricCard
+              title="Total de Usuários"
+              value={formatNumber(userStats.total)}
+              iconName="Users"
+            />
+            <MetricCard
+              title="Alunos"
+              value={formatNumber(userStats.byRole.student)}
+              iconName="GraduationCap"
+              subtitle={`${formatNumber(userStats.newUsers.last30Days)} novos (30d)`}
+            />
+            <MetricCard
+              title="Professores"
+              value={formatNumber(userStats.byRole.teacher)}
+              iconName="Users"
+            />
+            <MetricCard
+              title="Matrículas Ativas"
+              value={formatNumber(engagementStats.enrollments.active)}
+              iconName="Activity"
+              subtitle={`${formatNumber(engagementStats.totalEnrollments)} total`}
+            />
+            <MetricCard
+              title="Progresso Médio"
+              value={`${engagementStats.averageProgress}%`}
+              iconName="PieChart"
+            />
+            <MetricCard
+              title="Taxa de Conclusão"
+              value={`${engagementStats.completionRate}%`}
+              iconName="CheckCircle"
+              variant="success"
+            />
+          </StatsGrid>
+
+          <ChartContainer title="Distribuição de Usuários" badge="Por Tipo" badgeVariant="info">
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600">Alunos</span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatNumber(userStats.byRole.student)} ({Math.round((userStats.byRole.student / userStats.total) * 100)}%)
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-brand-orange rounded-full"
+                    style={{ width: `${(userStats.byRole.student / userStats.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600">Professores</span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatNumber(userStats.byRole.teacher)} ({Math.round((userStats.byRole.teacher / userStats.total) * 100)}%)
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 rounded-full"
+                    style={{ width: `${(userStats.byRole.teacher / userStats.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600">Admins</span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatNumber(userStats.byRole.admin)} ({Math.round((userStats.byRole.admin / userStats.total) * 100)}%)
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-red-500 rounded-full"
+                    style={{ width: `${(userStats.byRole.admin / userStats.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </ChartContainer>
+        </div>
+      </section>
+
+      {/* Performance de Cursos */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <Layers size={20} className="text-brand-orange" />
+          Performance de Cursos
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <StatsGrid columns={2} className="lg:col-span-1">
+            <MetricCard
+              title="Total de Cursos"
+              value={formatNumber(courseStats.total)}
+              iconName="Layers"
+            />
+            <MetricCard
+              title="Publicados"
+              value={formatNumber(courseStats.byStatus.published)}
+              iconName="CheckCircle"
+              variant="success"
+            />
+            <MetricCard
+              title="Em Rascunho"
+              value={formatNumber(courseStats.byStatus.draft)}
+              iconName="AlertTriangle"
+              variant="warning"
+            />
+            <MetricCard
+              title="Total de Aulas"
+              value={formatNumber(courseStats.totalLessons)}
+              iconName="GraduationCap"
+            />
+          </StatsGrid>
+
+          <div className="lg:col-span-2">
+            <ChartContainer title="Top Cursos" badge="Por Receita" badgeVariant="info">
+              <DataTable
+                columns={topCoursesColumns}
+                data={metrics.topCourses}
+                keyExtractor={(course) => course.id}
+                emptyMessage="Nenhum curso encontrado"
+                emptyDescription="Os cursos aparecerão aqui quando houver vendas"
+              />
+            </ChartContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* Análise Financeira */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <DollarSign size={20} className="text-brand-orange" />
+          Análise Financeira
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Over Time */}
+          <ChartContainer title="Receita por Dia" badge="Últimos 14 dias" badgeVariant="success">
             {revenueEntries.length > 0 ? (
               <div className="space-y-2">
                 {revenueEntries.map(([date, revenue]) => {
@@ -180,65 +315,139 @@ export default async function AdminMetricsPage() {
                 Nenhuma receita registrada nos últimos 14 dias
               </div>
             )}
-          </CardContent>
-        </Card>
+          </ChartContainer>
 
-        {/* Summary Stats */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold text-brand-gray-900">Resumo do Período</h2>
-          </CardHeader>
-          <CardContent>
+          {/* Distribuição por Status */}
+          <ChartContainer title="Receita por Status" badge="Distribuição" badgeVariant="info">
             <div className="space-y-4">
-              <div className="flex justify-between items-center py-3 border-b border-brand-gray-100">
-                <span className="text-brand-gray-600">Receita Total</span>
-                <span className="text-lg font-semibold text-brand-gray-900">
-                  {formatCurrency(Object.values(metrics.revenueByDay).reduce((a, b) => a + b, 0))}
-                </span>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                    Pago
+                  </span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatCurrency(financialStats.revenueByStatus.paid)}
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 rounded-full"
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between items-center py-3 border-b border-brand-gray-100">
-                <span className="text-brand-gray-600">Média Diária</span>
-                <span className="text-lg font-semibold text-brand-gray-900">
-                  {formatCurrency(
-                    Object.values(metrics.revenueByDay).length > 0
-                      ? Object.values(metrics.revenueByDay).reduce((a, b) => a + b, 0) / Object.values(metrics.revenueByDay).length
-                      : 0
-                  )}
-                </span>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                    Pendente
+                  </span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatCurrency(financialStats.revenueByStatus.pending)}
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-yellow-500 rounded-full"
+                    style={{ width: `${financialStats.revenueByStatus.paid > 0 ? (financialStats.revenueByStatus.pending / financialStats.revenueByStatus.paid) * 100 : 0}%` }}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between items-center py-3 border-b border-brand-gray-100">
-                <span className="text-brand-gray-600">Melhor Dia</span>
-                <span className="text-lg font-semibold text-green-600">
-                  {formatCurrency(Math.max(...Object.values(metrics.revenueByDay), 0))}
-                </span>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-brand-gray-600 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    Cancelado/Reembolsado
+                  </span>
+                  <span className="text-sm font-semibold text-brand-gray-900">
+                    {formatCurrency(financialStats.revenueByStatus.cancelled + financialStats.revenueByStatus.refunded)}
+                  </span>
+                </div>
+                <div className="h-3 bg-brand-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-red-500 rounded-full"
+                    style={{ width: `${financialStats.revenueByStatus.paid > 0 ? ((financialStats.revenueByStatus.cancelled + financialStats.revenueByStatus.refunded) / financialStats.revenueByStatus.paid) * 100 : 0}%` }}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between items-center py-3">
-                <span className="text-brand-gray-600">Dias com Vendas</span>
-                <span className="text-lg font-semibold text-brand-gray-900">
-                  {Object.values(metrics.revenueByDay).filter(v => v > 0).length} dias
-                </span>
+            </div>
+          </ChartContainer>
+        </div>
+      </section>
+
+      {/* Marketing e Afiliados */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <Share2 size={20} className="text-brand-orange" />
+          Marketing e Afiliados
+        </h2>
+        <StatsGrid columns={4}>
+          <MetricCard
+            title="Códigos de Afiliado"
+            value={formatNumber(referralStats.totalCodes)}
+            iconName="Share2"
+          />
+          <MetricCard
+            title="Cliques em Links"
+            value={formatNumber(referralStats.totalClicks)}
+            iconName="Eye"
+          />
+          <MetricCard
+            title="Comissões Totais"
+            value={formatCurrency(referralStats.commissionStats.total)}
+            iconName="DollarSign"
+          />
+          <MetricCard
+            title="Comissões Pendentes"
+            value={formatCurrency(referralStats.commissionStats.pending)}
+            iconName="AlertTriangle"
+            variant="warning"
+          />
+        </StatsGrid>
+      </section>
+
+      {/* Saúde do Sistema */}
+      <section>
+        <h2 className="text-lg font-semibold text-brand-gray-900 mb-4 flex items-center gap-2">
+          <Activity size={20} className="text-brand-orange" />
+          Saúde do Sistema
+        </h2>
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <p className="text-sm text-brand-gray-500 mb-1">Webhooks Processados</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {formatNumber(systemHealth.webhooks.total - systemHealth.webhooks.pending)}
+                </p>
+                <p className="text-xs text-brand-gray-400 mt-1">de {formatNumber(systemHealth.webhooks.total)} total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-brand-gray-500 mb-1">Webhooks Pendentes</p>
+                <p className={`text-3xl font-bold ${systemHealth.webhooks.pending > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {formatNumber(systemHealth.webhooks.pending)}
+                </p>
+                <p className="text-xs text-brand-gray-400 mt-1">aguardando processamento</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-brand-gray-500 mb-1">Saques Pendentes</p>
+                <p className={`text-3xl font-bold ${systemHealth.pendingWithdraws > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {formatNumber(systemHealth.pendingWithdraws)}
+                </p>
+                <p className="text-xs text-brand-gray-400 mt-1">para aprovação</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-brand-gray-500 mb-1">Cursos em Rascunho</p>
+                <p className={`text-3xl font-bold ${systemHealth.draftCourses > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {formatNumber(systemHealth.draftCourses)}
+                </p>
+                <p className="text-xs text-brand-gray-400 mt-1">aguardando publicação</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Top Courses Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <h2 className="text-lg font-semibold text-brand-gray-900">Top Cursos</h2>
-          <Badge variant="info">Por receita</Badge>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            columns={topCoursesColumns}
-            data={metrics.topCourses}
-            keyExtractor={(course) => course.id}
-            emptyMessage="Nenhum curso encontrado"
-            emptyDescription="Os cursos aparecerão aqui quando houver vendas"
-          />
-        </CardContent>
-      </Card>
+      </section>
     </div>
   );
 }

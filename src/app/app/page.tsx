@@ -53,7 +53,7 @@ export default async function StudentDashboardPage() {
 
         {enrollments.length === 0 ? (
           <EmptyState
-            icon={PlayCircle}
+            iconName="PlayCircle"
             title="Você ainda não começou nenhum curso"
             description="Explore nosso marketplace e comece sua jornada de aprendizado hoje mesmo."
             action={

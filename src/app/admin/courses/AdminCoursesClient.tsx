@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +13,7 @@ import {
   toggleCourseFeatureAction, 
   toggleCoursePublishAction 
 } from "@/lib/actions/admin";
-import { Search, Star, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Search, Star, Eye, EyeOff, ExternalLink, Plus, MoreVertical, CheckCircle, AlertCircle } from "lucide-react";
 
 // Format currency to Brazilian Real
 function formatCurrency(value: number): string {
@@ -37,6 +38,9 @@ interface Course {
   created_at: string;
   profiles?: { name: string };
   enrollments?: { count: number }[];
+  checkout_url?: string;
+  member_area_configured?: boolean;
+  is_complete?: boolean;
 }
 
 interface AdminCoursesClientProps {
@@ -117,7 +121,20 @@ export function AdminCoursesClient({ initialCourses }: AdminCoursesClientProps) 
     {
       key: 'status',
       header: 'Status',
-      render: (course: Course) => getStatusBadge(course.status),
+      render: (course: Course) => (
+        <div className="flex items-center gap-2">
+          {getStatusBadge(course.status)}
+          {course.status !== 'published' && (
+            course.is_complete ? (
+              <Badge variant="success" className="text-xs">Completo</Badge>
+            ) : (
+              <Badge variant="default" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
+                Incompleto
+              </Badge>
+            )
+          )}
+        </div>
+      ),
     },
     {
       key: 'price',
@@ -156,27 +173,45 @@ export function AdminCoursesClient({ initialCourses }: AdminCoursesClientProps) 
       header: 'Ações',
       render: (course: Course) => (
         <div className="flex items-center gap-2">
+          {/* Dropdown de edição */}
+          <div className="relative group">
+            <button className="p-2 bg-brand-gray-100 text-brand-gray-600 hover:bg-brand-gray-200 rounded-lg transition-colors">
+              <MoreVertical size={16} />
+            </button>
+            <div className="absolute right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-brand-gray-200 hidden group-hover:block z-10">
+              <Link 
+                href={`/admin/courses/${course.id}/edit?tab=basic`}
+                className="block px-4 py-2.5 text-sm hover:bg-brand-gray-50 border-b border-brand-gray-100"
+              >
+                <div className="font-medium text-brand-gray-900">Editar Informações Básicas</div>
+                <div className="text-xs text-brand-gray-500 mt-0.5">Título, descrição, categoria...</div>
+              </Link>
+              <Link 
+                href={`/admin/courses/${course.id}/edit?tab=complete`}
+                className="block px-4 py-2.5 text-sm hover:bg-brand-gray-50"
+              >
+                <div className="font-medium text-brand-gray-900">Editar Informações Completas</div>
+                <div className="text-xs text-brand-gray-500 mt-0.5">Checkout, área de membros...</div>
+              </Link>
+            </div>
+          </div>
+          
+          {/* Botão publicar/despublicar */}
           <button
             onClick={() => handleTogglePublish(course.id, course.status)}
-            disabled={isPending}
+            disabled={isPending || (course.status !== 'published' && !course.is_complete)}
+            title={!course.is_complete && course.status !== 'published' 
+              ? 'Complete todas as informações para publicar' 
+              : course.status === 'published' ? 'Despublicar' : 'Publicar'}
             className={`p-2 rounded-lg transition-colors ${
-              course.status === 'published'
-                ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                : 'bg-brand-gray-100 text-brand-gray-600 hover:bg-brand-gray-200'
+              (!course.is_complete && course.status !== 'published')
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : course.status === 'published'
+                  ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                  : 'bg-brand-gray-100 text-brand-gray-600 hover:bg-brand-gray-200'
             }`}
-            title={course.status === 'published' ? 'Despublicar' : 'Publicar'}
           >
             {course.status === 'published' ? <Eye size={16} /> : <EyeOff size={16} />}
-          </button>
-          <button
-            onClick={() => {
-              setSelectedCourse(course);
-              setIsDetailModalOpen(true);
-            }}
-            className="p-2 bg-brand-gray-100 text-brand-gray-600 hover:bg-brand-gray-200 rounded-lg transition-colors"
-            title="Ver detalhes"
-          >
-            <ExternalLink size={16} />
           </button>
         </div>
       ),
@@ -197,13 +232,15 @@ export function AdminCoursesClient({ initialCourses }: AdminCoursesClientProps) 
         <div>
           <h1 className="text-2xl font-bold text-brand-gray-900">Cursos</h1>
           <p className="text-sm text-brand-gray-500 mt-1">
-            Gerencie todos os cursos da plataforma
+            Gerencie os cursos criados pela administração
           </p>
         </div>
-        <Button variant="primary">
-          <ExternalLink size={16} className="mr-2" />
-          Novo Curso
-        </Button>
+        <Link href="/admin/courses/new">
+          <Button variant="primary">
+            <Plus size={16} className="mr-2" />
+            Novo Curso
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}

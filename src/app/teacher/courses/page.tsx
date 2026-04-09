@@ -99,7 +99,7 @@ export default async function TeacherCoursesPage() {
       {/* Courses List */}
       {courses.length === 0 ? (
         <EmptyState
-          icon={Plus}
+          iconName="Plus"
           title="Nenhum curso criado"
           description="Comece criando seu primeiro curso para compartilhar seu conhecimento com os alunos."
           action={

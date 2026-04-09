@@ -1,8 +1,5 @@
-"use client";
-
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Inbox } from "lucide-react";
 
 export interface Column<T> {
   key: string;
@@ -67,7 +64,7 @@ export function DataTable<T>({
     return (
       <div className="bg-white rounded-xl border border-brand-gray-200 shadow-sm">
         <EmptyState
-          icon={Inbox}
+          iconName="Inbox"
           title={emptyMessage}
           description={emptyDescription}
         />

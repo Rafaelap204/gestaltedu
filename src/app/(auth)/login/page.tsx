@@ -29,7 +29,7 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -39,8 +39,33 @@ function LoginForm() {
         return;
       }
 
+      // Get user profile to determine role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', signInData.user.id)
+        .single()
+
+      const userRole = profile?.role || 'student'
+
+      // Determine redirect based on role or use provided redirect param
+      let targetRedirect = redirect
+      if (redirect === '/app') {
+        // Only use role-based redirect if no specific redirect was provided
+        switch (userRole) {
+          case 'admin':
+            targetRedirect = '/admin'
+            break
+          case 'teacher':
+            targetRedirect = '/teacher'
+            break
+          default:
+            targetRedirect = '/app'
+        }
+      }
+
       // Redirect on success
-      router.push(redirect);
+      router.push(targetRedirect);
       router.refresh();
     } catch {
       setError("Ocorreu um erro ao fazer login");

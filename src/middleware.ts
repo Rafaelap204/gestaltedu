@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Route patterns
 const PUBLIC_ROUTES = [
-  '/',
   '/marketplace',
   '/terms',
   '/privacy',
@@ -81,11 +80,32 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
+  // Redirect root to login
+  if (path === '/') {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
   // Allow public routes
   if (isPublicRoute(path)) {
-    // If user is authenticated and trying to access auth routes, redirect to /app
+    // If user is authenticated and trying to access auth routes, redirect based on role
     if (user && isAuthRoute(path)) {
-      return NextResponse.redirect(new URL('/app', request.url))
+      // Get user role for redirect
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single()
+      
+      const userRole = profile?.role || 'student'
+      let redirectPath = '/app'
+      
+      if (userRole === 'admin') {
+        redirectPath = '/admin'
+      } else if (userRole === 'teacher') {
+        redirectPath = '/teacher'
+      }
+      
+      return NextResponse.redirect(new URL(redirectPath, request.url))
     }
     return supabaseResponse
   }

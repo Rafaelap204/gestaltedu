@@ -86,7 +86,7 @@ async function CoursesList({ searchParams }: MarketplacePageProps) {
     console.error("Error fetching courses:", error);
     return (
       <EmptyState
-        icon={Filter}
+        iconName="Filter"
         title="Erro ao carregar cursos"
         description="Não foi possível carregar os cursos. Tente novamente mais tarde."
       />
@@ -96,7 +96,7 @@ async function CoursesList({ searchParams }: MarketplacePageProps) {
   if (!courses || courses.length === 0) {
     return (
       <EmptyState
-        icon={Search}
+        iconName="Search"
         title="Nenhum curso encontrado"
         description="Tente ajustar os filtros ou buscar por outros termos."
         action={

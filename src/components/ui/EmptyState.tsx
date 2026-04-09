@@ -1,8 +1,18 @@
 import { ReactNode } from "react";
-import { LucideIcon } from "lucide-react";
+import { Inbox, FileQuestion, Search, PlayCircle, BookOpen, Filter, Plus, LucideIcon } from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  Inbox,
+  FileQuestion,
+  Search,
+  PlayCircle,
+  BookOpen,
+  Filter,
+  Plus
+}
 
 interface EmptyStateProps {
-  icon?: LucideIcon;
+  iconName?: keyof typeof iconMap;
   title: string;
   description?: string;
   action?: ReactNode;
@@ -10,12 +20,14 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon: Icon,
+  iconName,
   title,
   description,
   action,
   className = "",
 }: EmptyStateProps) {
+  const Icon = iconName ? iconMap[iconName] : null
+  
   return (
     <div
       className={`flex flex-col items-center justify-center text-center py-12 px-4 ${className}`}
