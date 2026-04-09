@@ -286,7 +286,7 @@ export function EditAdminCourseClient({ course }: EditAdminCourseClientProps) {
                   </div>
                 </div>
                 
-                <Link href={`/admin/courses/${course.id}/member-area`}>
+                <Link href={`/admin/courses/${course.id}/members-area`}>
                   <Button variant="outline" className="w-full">
                     <ExternalLink size={16} className="mr-2" />
                     Configurar Área de Membros

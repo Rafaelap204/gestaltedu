@@ -15,7 +15,7 @@ export default async function StudentDashboardPage() {
     return null;
   }
 
-  // Fetch data
+  // Fetch data - usar profileId (profiles.id) para matrículas
   const [enrollments, recommendations] = await Promise.all([
     getStudentEnrollments(profileId),
     getRecommendedCourses(profileId, 6),

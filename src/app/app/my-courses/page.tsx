@@ -15,7 +15,7 @@ export default async function MyCoursesPage() {
     return null;
   }
 
-  // Fetch both active and completed enrollments
+  // Fetch both active and completed enrollments - usar profileId (profiles.id)
   const [activeEnrollments, completedEnrollments] = await Promise.all([
     getEnrollmentsByStatus(profileId, 'active'),
     getEnrollmentsByStatus(profileId, 'completed'),

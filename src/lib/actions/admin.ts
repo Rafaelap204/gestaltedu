@@ -207,6 +207,188 @@ export async function changeUserRoleAction(profileId: string, role: UserRole): P
 }
 
 // ============================================================================
+// CREATE USER
+// ============================================================================
+
+// Helper para criar usuário via API REST do Supabase
+async function createUserViaAPI(
+  email: string,
+  password: string
+): Promise<{ id: string; email: string } | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('Missing Supabase environment variables')
+    return null
+  }
+  
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true,
+        auto_confirm: true,
+      }),
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || 'Erro ao criar usuário')
+    }
+    
+    const data = await response.json()
+    return { id: data.id, email: data.email }
+  } catch (error: any) {
+    console.error('Error creating user via API:', error)
+    throw error
+  }
+}
+
+export async function createUserAction(
+  email: string,
+  password: string,
+  name: string,
+  role: UserRole
+): Promise<{ userId: string; profileId: string } | { error: string }> {
+  try {
+    const supabase = await verifyAdmin()
+    
+    // Validar role
+    const validRoles: UserRole[] = ['admin', 'teacher', 'student']
+    if (!validRoles.includes(role)) {
+      throw new Error('Role inválida')
+    }
+    
+    // Criar usuário no auth via API
+    const authUser = await createUserViaAPI(email, password)
+    
+    if (!authUser) {
+      throw new Error('Erro ao criar usuário no sistema de autenticação')
+    }
+    
+    const userId = authUser.id
+    
+    // Criar perfil
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        user_id: userId,
+        name: name.trim(),
+        role,
+        avatar_url: null,
+      })
+      .select('id')
+      .single()
+    
+    if (profileError) {
+      throw profileError
+    }
+    
+    revalidatePath('/admin/users')
+    return { userId, profileId: profileData.id }
+  } catch (err: any) {
+    return { error: err.message || 'Erro ao criar usuário' }
+  }
+}
+
+// ============================================================================
+// ENROLL USER IN COURSES
+// ============================================================================
+
+export async function enrollUserInCoursesAction(
+  profileId: string,
+  courseIds: string[]
+): Promise<{ success: boolean; enrolled: string[]; errors: string[]; message?: string } | { error: string }> {
+  try {
+    const supabase = await verifyAdmin()
+    
+    console.log('Enrolling user:', profileId, 'in courses:', courseIds)
+    
+    if (courseIds.length === 0) {
+      return { error: 'Selecione pelo menos um curso' }
+    }
+    
+    // Verificar cursos existentes
+    const { data: existingCourses, error: coursesError } = await supabase
+      .from('courses')
+      .select('id, title')
+      .in('id', courseIds)
+    
+    console.log('Existing courses:', existingCourses, 'Error:', coursesError)
+    
+    const existingCourseIds = existingCourses?.map((c: any) => c.id) || []
+    const invalidCourseIds = courseIds.filter(id => !existingCourseIds.includes(id))
+    
+    if (invalidCourseIds.length > 0) {
+      return { error: `Cursos não encontrados: ${invalidCourseIds.join(', ')}` }
+    }
+    
+    // Verificar matrículas existentes
+    const { data: existingEnrollments, error: enrollError } = await supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('user_id', profileId)
+      .in('course_id', courseIds)
+    
+    console.log('Existing enrollments:', existingEnrollments, 'Error:', enrollError)
+    
+    const enrolledCourseIds = existingEnrollments?.map((e: any) => e.course_id) || []
+    const newCourseIds = courseIds.filter(id => !enrolledCourseIds.includes(id))
+    
+    console.log('Already enrolled:', enrolledCourseIds, 'New courses to enroll:', newCourseIds)
+    
+    if (newCourseIds.length === 0) {
+      return { 
+        success: true, 
+        enrolled: [], 
+        errors: [], 
+        message: 'Usuário já está matriculado em todos os cursos selecionados' 
+      }
+    }
+    
+    const enrolled: string[] = []
+    const errors: string[] = []
+    
+    // Criar matrículas
+    const now = new Date().toISOString()
+    for (const courseId of newCourseIds) {
+      console.log('Inserting enrollment for course:', courseId)
+      const { error } = await supabase
+        .from('enrollments')
+        .insert({
+          user_id: profileId,
+          course_id: courseId,
+          status: 'active',
+          started_at: now,
+        })
+      
+      if (error) {
+        console.error('Error inserting enrollment:', error)
+        errors.push(`Erro ao matricular no curso ${courseId}: ${error.message}`)
+      } else {
+        enrolled.push(courseId)
+      }
+    }
+    
+    revalidatePath('/admin/enrollments')
+    revalidatePath('/admin/users')
+    
+    return { success: true, enrolled, errors }
+  } catch (err: any) {
+    console.error('Exception in enrollUserInCoursesAction:', err)
+    return { error: err.message || 'Erro ao matricular usuário nos cursos' }
+  }
+}
+
+// ============================================================================
 // ENROLLMENTS
 // ============================================================================
 

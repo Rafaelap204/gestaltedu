@@ -11,9 +11,11 @@ import { DataTable } from "@/components/admin/DataTable";
 import { 
   changeUserRoleAction, 
   blockUserAction, 
-  unblockUserAction 
+  unblockUserAction,
+  createUserAction,
+  enrollUserInCoursesAction
 } from "@/lib/actions/admin";
-import { Search, Shield, UserX, UserCheck, AlertTriangle } from "lucide-react";
+import { Search, Shield, UserX, UserCheck, AlertTriangle, Plus, BookOpen, CheckSquare, Square } from "lucide-react";
 import type { UserRole } from "@/types/database";
 
 // Format date to Brazilian format
@@ -31,11 +33,17 @@ interface User {
   avatar_url?: string;
 }
 
-interface AdminUsersClientProps {
-  initialUsers: User[];
+interface Course {
+  id: string;
+  title: string;
 }
 
-export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
+interface AdminUsersClientProps {
+  initialUsers: User[];
+  courses: Course[];
+}
+
+export function AdminUsersClient({ initialUsers, courses }: AdminUsersClientProps) {
   const [users, setUsers] = useState<User[]>(initialUsers || []);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -45,7 +53,18 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [newRole, setNewRole] = useState<UserRole>('student');
+  
+  // Create user form state
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('student');
+  const [enrollInCourses, setEnrollInCourses] = useState(false);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [createError, setCreateError] = useState('');
 
   // Filter users
   const filteredUsers = users.filter((user) => {
@@ -110,6 +129,106 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
     setIsBlockModalOpen(true);
   };
 
+  // Open create modal
+  const openCreateModal = () => {
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserName('');
+    setNewUserRole('student');
+    setEnrollInCourses(false);
+    setSelectedCourses([]);
+    setCreateError('');
+    setIsCreateModalOpen(true);
+  };
+
+  // Open enroll modal
+  const openEnrollModal = (user: User) => {
+    setSelectedUser(user);
+    setSelectedCourses([]);
+    setIsEnrollModalOpen(true);
+  };
+
+  // Handle create user
+  const handleCreateUser = async () => {
+    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserName.trim()) {
+      setCreateError('Preencha todos os campos obrigatórios');
+      return;
+    }
+    
+    if (newUserPassword.length < 6) {
+      setCreateError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    
+    startTransition(async () => {
+      const result = await createUserAction(
+        newUserEmail.trim(),
+        newUserPassword,
+        newUserName.trim(),
+        newUserRole
+      );
+      
+      if ('error' in result) {
+        setCreateError(result.error);
+      } else {
+        // Matricular em cursos se selecionado
+        if (enrollInCourses && selectedCourses.length > 0) {
+          await enrollUserInCoursesAction(result.userId, selectedCourses);
+        }
+        
+        // Adicionar usuário à lista local
+        const newUser: User = {
+          id: result.profileId,
+          user_id: result.userId,
+          name: newUserName.trim(),
+          email: newUserEmail.trim(),
+          role: newUserRole,
+          created_at: new Date().toISOString(),
+        };
+        setUsers([newUser, ...users]);
+        setIsCreateModalOpen(false);
+      }
+    });
+  };
+
+  // Handle enroll user in courses
+  const handleEnrollUser = async () => {
+    if (!selectedUser) return;
+    
+    startTransition(async () => {
+      // Usar selectedUser.id (profile ID) não user_id (auth ID)
+      // Pois a tabela enrollments referencia profiles(id)
+      const result = await enrollUserInCoursesAction(selectedUser.id, selectedCourses);
+      
+      if ('error' in result) {
+        alert(result.error);
+      } else {
+        setIsEnrollModalOpen(false);
+        setSelectedUser(null);
+        setSelectedCourses([]);
+        
+        if (result.message) {
+          alert(result.message);
+        } else if (result.enrolled.length > 0) {
+          alert(`Matriculado em ${result.enrolled.length} curso(s) com sucesso!`);
+        } else if (result.errors.length > 0) {
+          alert('Erros ao matricular:\n' + result.errors.join('\n'));
+        } else {
+          alert('Nenhum curso foi matriculado.');
+        }
+      }
+    });
+  };
+
+  // Toggle course selection
+  const toggleCourseSelection = (courseId: string) => {
+    setSelectedCourses(prev => 
+      prev.includes(courseId) 
+        ? prev.filter(id => id !== courseId)
+        : [...prev, courseId]
+    );
+  };
+
   // Table columns
   const columns = [
     {
@@ -151,6 +270,14 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
             <Shield size={16} />
           </button>
           <button
+            onClick={() => openEnrollModal(user)}
+            disabled={isPending}
+            className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors"
+            title="Matricular em cursos"
+          >
+            <BookOpen size={16} />
+          </button>
+          <button
             onClick={() => openBlockModal(user)}
             disabled={isPending}
             className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
@@ -186,6 +313,10 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
             Gerencie usuários e permissões da plataforma
           </p>
         </div>
+        <Button variant="primary" onClick={openCreateModal}>
+          <Plus size={16} className="mr-2" />
+          Adicionar Usuário
+        </Button>
       </div>
 
       {/* Filters */}
@@ -308,6 +439,189 @@ export function AdminUsersClient({ initialUsers }: AdminUsersClientProps) {
               Usuários bloqueados não poderão fazer login na plataforma até que sejam desbloqueados.
               Esta ação pode ser revertida posteriormente.
             </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Create User Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Adicionar Novo Usuário"
+        size="lg"
+        footer={
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleCreateUser}
+              disabled={isPending}
+            >
+              {isPending ? 'Criando...' : 'Criar Usuário'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {createError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{createError}</p>
+            </div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-brand-gray-700 mb-2">
+              Nome Completo *
+            </label>
+            <Input
+              placeholder="Digite o nome do usuário"
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-brand-gray-700 mb-2">
+              E-mail *
+            </label>
+            <Input
+              type="email"
+              placeholder="usuario@email.com"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-brand-gray-700 mb-2">
+              Senha *
+            </label>
+            <Input
+              type="password"
+              placeholder="Mínimo 6 caracteres"
+              value={newUserPassword}
+              onChange={(e) => setNewUserPassword(e.target.value)}
+            />
+            <p className="text-xs text-brand-gray-500 mt-1">
+              A senha deve ter pelo menos 6 caracteres
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-brand-gray-700 mb-2">
+              Role *
+            </label>
+            <Select
+              options={[
+                { value: 'student', label: 'Aluno' },
+                { value: 'teacher', label: 'Professor' },
+                { value: 'admin', label: 'Administrador' },
+              ]}
+              value={newUserRole}
+              onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+            />
+          </div>
+          
+          <div className="border-t border-brand-gray-200 pt-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enrollInCourses}
+                onChange={(e) => setEnrollInCourses(e.target.checked)}
+                className="w-4 h-4 text-brand-orange border-brand-gray-300 rounded focus:ring-brand-orange"
+              />
+              <span className="text-sm font-medium text-brand-gray-700">
+                Matricular em cursos (acesso gratuito)
+              </span>
+            </label>
+          </div>
+          
+          {enrollInCourses && (
+            <div className="bg-brand-gray-50 rounded-lg p-4">
+              <label className="block text-sm font-medium text-brand-gray-700 mb-3">
+                Selecione os cursos:
+              </label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {courses.length === 0 ? (
+                  <p className="text-sm text-brand-gray-500">Nenhum curso disponível</p>
+                ) : (
+                  courses.map((course) => (
+                    <label
+                      key={course.id}
+                      onClick={() => toggleCourseSelection(course.id)}
+                      className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors"
+                    >
+                      {selectedCourses.includes(course.id) ? (
+                        <CheckSquare size={18} className="text-brand-orange" />
+                      ) : (
+                        <Square size={18} className="text-brand-gray-400" />
+                      )}
+                      <span className="text-sm text-brand-gray-700">{course.title}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Enroll User Modal */}
+      <Modal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
+        title="Matricular em Cursos"
+        size="md"
+        footer={
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setIsEnrollModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleEnrollUser}
+              disabled={isPending || selectedCourses.length === 0}
+            >
+              {isPending ? 'Matriculando...' : `Matricular em ${selectedCourses.length} curso(s)`}
+            </Button>
+          </div>
+        }
+      >
+        {selectedUser && (
+          <div className="space-y-4">
+            <div className="p-4 bg-brand-gray-50 rounded-lg">
+              <p className="text-sm text-brand-gray-500">Usuário</p>
+              <p className="font-medium text-brand-gray-900">{selectedUser.name || 'Sem nome'}</p>
+              <p className="text-sm text-brand-gray-600">{selectedUser.email || selectedUser.user_id}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-brand-gray-700 mb-3">
+                Selecione os cursos para matricular:
+              </label>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {courses.length === 0 ? (
+                  <p className="text-sm text-brand-gray-500">Nenhum curso disponível</p>
+                ) : (
+                  courses.map((course) => (
+                    <label
+                      key={course.id}
+                      onClick={() => toggleCourseSelection(course.id)}
+                      className="flex items-center gap-3 p-3 bg-brand-gray-50 hover:bg-brand-gray-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      {selectedCourses.includes(course.id) ? (
+                        <CheckSquare size={20} className="text-brand-orange" />
+                      ) : (
+                        <Square size={20} className="text-brand-gray-400" />
+                      )}
+                      <span className="text-sm text-brand-gray-700">{course.title}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
       </Modal>

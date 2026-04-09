@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { Slot } from "@radix-ui/react-slot";
+import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "destructive" | "outline";
@@ -39,16 +39,32 @@ export function Button({
     lg: "px-6 py-3 text-base gap-2",
   };
 
-  const Comp = asChild ? Slot : "button";
+  const buttonClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
+
+  // When asChild is true, we need to clone the child element with our props
+  if (asChild && React.isValidElement(children)) {
+    const child = children as React.ReactElement<any>;
+    return React.cloneElement(child, {
+      ...props,
+      className: `${buttonClassName} ${child.props.className || ""}`,
+      disabled: disabled || loading,
+      children: (
+        <>
+          {loading && <Loader2 size={size === "lg" ? 20 : 16} className="animate-spin" />}
+          {child.props.children}
+        </>
+      ),
+    });
+  }
 
   return (
-    <Comp
-      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+    <button
+      className={buttonClassName}
       disabled={disabled || loading}
       {...props}
     >
       {loading && <Loader2 size={size === "lg" ? 20 : 16} className="animate-spin" />}
       {children}
-    </Comp>
+    </button>
   );
 }

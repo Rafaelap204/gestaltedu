@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { signOutAction } from "@/lib/actions/auth";
 
 interface UserMenuProps {
   user?: {
@@ -14,7 +16,9 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Default user for demo
   const currentUser = user || {
@@ -110,15 +114,24 @@ export function UserMenu({ user }: UserMenuProps) {
           <div className="my-1 border-t border-brand-gray-100" />
 
           <button
-            onClick={() => {
+            onClick={async () => {
               setIsOpen(false);
-              // TODO: Implement logout
-              console.log("Logout");
+              setIsLoggingOut(true);
+              try {
+                await signOutAction();
+                router.push('/login');
+                router.refresh();
+              } catch (error) {
+                console.error('Erro ao fazer logout:', error);
+              } finally {
+                setIsLoggingOut(false);
+              }
             }}
-            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+            disabled={isLoggingOut}
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
           >
             <LogOut size={18} />
-            Sair
+            {isLoggingOut ? 'Saindo...' : 'Sair'}
           </button>
         </div>
       )}

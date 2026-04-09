@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Edit2, Trash2, Eye, EyeOff, Users } from 'lucide-react'
+import { Plus, Edit2, Trash2, Eye, EyeOff, Users, LayoutDashboard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/utils/auth'
 import { Button } from '@/components/ui/Button'
@@ -17,6 +17,7 @@ interface CourseWithStats {
   thumbnail_url: string | null
   created_at: string
   enrollments_count: number
+  members_area_enabled: boolean
 }
 
 async function getTeacherCourses(teacherId: string): Promise<CourseWithStats[]> {
@@ -32,6 +33,7 @@ async function getTeacherCourses(teacherId: string): Promise<CourseWithStats[]> 
       price,
       thumbnail_url,
       created_at,
+      members_area_enabled,
       enrollments:enrollments(count)
     `)
     .eq('teacher_id', teacherId)
@@ -44,6 +46,7 @@ async function getTeacherCourses(teacherId: string): Promise<CourseWithStats[]> 
   
   return (courses || []).map(course => ({
     ...course,
+    members_area_enabled: course.members_area_enabled || false,
     enrollments_count: (course.enrollments as unknown as [{ count: number }])?.[0]?.count || 0,
   }))
 }
@@ -185,6 +188,17 @@ export default async function TeacherCoursesPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <Link href={`/teacher/courses/${course.id}/members-area`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Configurar Área de Membros"
+                            className={course.members_area_enabled ? 'text-green-600 hover:text-green-700' : 'text-brand-gray-400 hover:text-brand-orange'}
+                          >
+                            <LayoutDashboard size={16} />
+                            <span className="sr-only">Configurar Área de Membros</span>
+                          </Button>
+                        </Link>
                         <Link href={`/teacher/courses/${course.id}/edit`}>
                           <Button variant="ghost" size="sm">
                             <Edit2 size={16} />

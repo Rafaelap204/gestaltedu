@@ -1,4 +1,4 @@
-export type VideoProvider = 'youtube' | 'vimeo' | null
+export type VideoProvider = 'youtube' | 'vimeo' | 'panda' | null
 
 export function parseVideoUrl(url: string): { provider: VideoProvider; embedUrl: string | null } {
   // YouTube patterns
@@ -34,11 +34,33 @@ export function parseVideoUrl(url: string): { provider: VideoProvider; embedUrl:
       }
     }
   }
+
+  // Panda Video patterns
+  // URLs like: https://player-panda.b-cdn.net/{video_id}
+  // Or: https://cdn.panda.video/{video_id}
+  // Or: https://dashboard.panda.video/video/{video_id}
+  const pandaPatterns = [
+    /player-panda\.b-cdn\.net\/([a-zA-Z0-9_-]+)/,
+    /cdn\.panda\.video\/([a-zA-Z0-9_-]+)/,
+    /dashboard\.panda\.video\/(?:video|embed)\/([a-zA-Z0-9_-]+)/,
+    /panda\.video\/(?:v|embed)\/([a-zA-Z0-9_-]+)/,
+  ]
+
+  for (const pattern of pandaPatterns) {
+    const match = url.match(pattern)
+    if (match) {
+      const videoId = match[1]
+      return {
+        provider: 'panda',
+        embedUrl: `https://player-panda.b-cdn.net/${videoId}`,
+      }
+    }
+  }
   
   return { provider: null, embedUrl: null }
 }
 
-export function getVideoEmbedUrl(url: string, provider: 'youtube' | 'vimeo'): string {
+export function getVideoEmbedUrl(url: string, provider: 'youtube' | 'vimeo' | 'panda'): string {
   const result = parseVideoUrl(url)
   if (result.provider === provider && result.embedUrl) {
     return result.embedUrl
@@ -58,11 +80,30 @@ export function getVideoEmbedUrl(url: string, provider: 'youtube' | 'vimeo'): st
       return `https://player.vimeo.com/video/${match[1]}`
     }
   }
+
+  if (provider === 'panda') {
+    // Try to extract Panda Video ID from various URL formats
+    const patterns = [
+      /player-panda\.b-cdn\.net\/([a-zA-Z0-9_-]+)/,
+      /cdn\.panda\.video\/([a-zA-Z0-9_-]+)/,
+      /dashboard\.panda\.video\/(?:video|embed)\/([a-zA-Z0-9_-]+)/,
+    ]
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) {
+        return `https://player-panda.b-cdn.net/${match[1]}`
+      }
+    }
+    // If URL looks like a direct embed URL, use it as-is
+    if (url.includes('player-panda.b-cdn.net')) {
+      return url
+    }
+  }
   
   return url
 }
 
-export function extractVideoId(url: string, provider: 'youtube' | 'vimeo'): string | null {
+export function extractVideoId(url: string, provider: 'youtube' | 'vimeo' | 'panda'): string | null {
   const result = parseVideoUrl(url)
   if (result.provider !== provider || !result.embedUrl) {
     return null
@@ -75,6 +116,11 @@ export function extractVideoId(url: string, provider: 'youtube' | 'vimeo'): stri
   
   if (provider === 'vimeo') {
     const match = result.embedUrl.match(/video\/(\d+)/)
+    return match ? match[1] : null
+  }
+
+  if (provider === 'panda') {
+    const match = result.embedUrl.match(/player-panda\.b-cdn\.net\/([a-zA-Z0-9_-]+)/)
     return match ? match[1] : null
   }
   

@@ -19,6 +19,69 @@ export type TicketStatus = 'open' | 'resolved' | 'escalated'
 
 export type ContentReleaseStrategy = 'immediate' | 'progressive'
 
+export type VideoProvider = 'youtube' | 'vimeo' | 'panda'
+
+export type LessonContentType = 'video' | 'ebook' | 'text' | 'resource'
+
+export interface MembersAreaTheme {
+  primaryColor: string
+  logoUrl: string | null
+  darkMode: boolean
+}
+
+export interface MembersAreaConfig {
+  enabled: boolean
+  subdomain: string | null
+  customDomain: string | null
+  theme: MembersAreaTheme
+}
+
+export interface LessonMaterial {
+  name: string
+  url?: string
+  content?: string
+  type: string
+  contentType: LessonContentType
+}
+
+export interface ModuleWithDetails {
+  id: string
+  course_id: string
+  title: string
+  description: string | null
+  icon: string | null
+  order: number
+  created_at: string
+  lessons?: LessonWithDetails[]
+}
+
+export interface LessonWithDetails {
+  id: string
+  module_id: string
+  title: string
+  video_url: string | null
+  video_provider: VideoProvider | null
+  materials: LessonMaterial[]
+  duration_seconds: number | null
+  order: number
+  created_at: string
+  description?: string | null
+  contentType: LessonContentType
+}
+
+export interface CourseWithMembersArea {
+  id: string
+  title: string
+  slug: string
+  description?: string | null
+  thumbnail_url?: string | null
+  members_area_enabled: boolean
+  members_area_subdomain: string | null
+  members_area_custom_domain: string | null
+  members_area_theme: MembersAreaTheme
+  modules: ModuleWithDetails[]
+}
+
 export interface AdminCourse {
   id: string
   teacher_id: string
@@ -41,6 +104,10 @@ export interface AdminCourse {
   checkout_url?: string
   member_area_configured: boolean
   is_complete: boolean
+  members_area_enabled?: boolean
+  members_area_subdomain?: string | null
+  members_area_custom_domain?: string | null
+  members_area_theme?: MembersAreaTheme
   created_at: string
   updated_at: string
 }

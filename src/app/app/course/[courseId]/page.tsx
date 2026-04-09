@@ -28,7 +28,7 @@ export default async function CoursePlayerPage({
     redirect('/login')
   }
 
-  // Verificar matrícula ativa
+  // Verificar matrícula ativa - usar profileId (profiles.id)
   const supabase = await createClient()
   const { data: enrollment } = await supabase
     .from('enrollments')

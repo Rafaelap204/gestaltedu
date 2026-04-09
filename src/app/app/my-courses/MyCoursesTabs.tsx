@@ -117,6 +117,7 @@ export function MyCoursesTabs({
                 totalLessons={enrollment.progress.totalLessons}
                 completedLessons={enrollment.progress.completedLessons}
                 variant={activeTab === "completed" ? "completed" : "progress"}
+                membersAreaEnabled={enrollment.course.members_area_enabled}
               />
             ))}
           </div>

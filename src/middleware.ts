@@ -13,6 +13,12 @@ const PUBLIC_ROUTES = [
 
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password']
 
+// Reserved subdomains that should not be treated as members area
+const RESERVED_SUBDOMAINS = [
+  'www', 'app', 'admin', 'teacher', 'api', 'mail', 'ftp',
+  'staging', 'dev', 'test', 'gestalt', 'gestaltedu', 'localhost',
+]
+
 // Helper to check if path matches pattern
 function matchesPattern(path: string, patterns: string[]): boolean {
   return patterns.some(pattern => {
@@ -31,6 +37,12 @@ function isPublicRoute(path: string): boolean {
   // Course and checkout pages are public
   if (path.startsWith('/course/')) return true
   if (path.startsWith('/checkout/')) return true
+  
+  // Members area landing pages are public (but inner pages require auth)
+  if (path === '/members-area' || path.startsWith('/members-area/')) {
+    // Only the course landing page is public, watch pages require auth
+    return !path.includes('/watch')
+  }
   
   return matchesPattern(path, PUBLIC_ROUTES)
 }
@@ -74,6 +86,52 @@ export async function middleware(request: NextRequest) {
       },
     }
   )
+
+  // ====================
+  // Subdomain routing for Members Area
+  // ====================
+  const hostname = request.headers.get('host') || ''
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'localhost:3000'
+  
+  // Check if the request is via a subdomain
+  if (hostname && hostname !== baseDomain && hostname !== `www.${baseDomain}`) {
+    const subdomain = hostname.split('.')[0]
+    
+    // Only process if it looks like a valid subdomain and not reserved
+    if (subdomain && !RESERVED_SUBDOMAINS.includes(subdomain) && !hostname.includes('localhost')) {
+      // Look up subdomain in courses table
+      const { data: course } = await supabase
+        .from('courses')
+        .select('id, members_area_enabled')
+        .eq('members_area_subdomain', subdomain)
+        .single()
+      
+      if (course && course.members_area_enabled) {
+        const path = request.nextUrl.pathname
+        
+        // If accessing root of subdomain, redirect to members area
+        if (path === '/' || path === '') {
+          // Check if user is authenticated
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (!user) {
+            // Redirect to login with redirect back to this subdomain
+            const loginUrl = new URL('/login', request.url)
+            loginUrl.searchParams.set('redirect', `/members-area/${course.id}`)
+            return NextResponse.redirect(loginUrl)
+          }
+          
+          // Authenticated user: rewrite to members area
+          const rewriteUrl = new URL(`/members-area/${course.id}`, request.url)
+          return NextResponse.rewrite(rewriteUrl)
+        }
+      }
+    }
+  }
+
+  // ====================
+  // Regular route handling
+  // ====================
 
   // Get user session
   const { data: { user } } = await supabase.auth.getUser()

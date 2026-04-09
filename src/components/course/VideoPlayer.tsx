@@ -5,7 +5,7 @@ import { Play } from 'lucide-react'
 
 interface VideoPlayerProps {
   videoUrl: string | null
-  videoProvider: 'youtube' | 'vimeo' | null
+  videoProvider: 'youtube' | 'vimeo' | 'panda' | null
   title: string
 }
 
@@ -31,6 +31,25 @@ export function VideoPlayer({ videoUrl, videoProvider, title }: VideoPlayerProps
       const match = videoUrl.match(/(\d+)/)
       if (match) {
         return `https://player.vimeo.com/video/${match[1]}`
+      }
+    }
+    
+    if (videoProvider === 'panda') {
+      // Panda Video: try to extract ID from URL or use URL directly
+      const pandaPatterns = [
+        /player-panda\.b-cdn\.net\/([a-zA-Z0-9_-]+)/,
+        /cdn\.panda\.video\/([a-zA-Z0-9_-]+)/,
+        /dashboard\.panda\.video\/(?:video|embed)\/([a-zA-Z0-9_-]+)/,
+      ]
+      for (const pattern of pandaPatterns) {
+        const match = videoUrl.match(pattern)
+        if (match) {
+          return `https://player-panda.b-cdn.net/${match[1]}`
+        }
+      }
+      // If URL looks like a direct Panda player URL, use as-is
+      if (videoUrl.includes('player-panda.b-cdn.net')) {
+        return videoUrl
       }
     }
     

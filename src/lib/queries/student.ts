@@ -11,6 +11,7 @@ export interface EnrollmentWithCourse {
     title: string
     slug: string
     thumbnail_url: string | null
+    members_area_enabled: boolean
     teacher: {
       name: string | null
     } | null
@@ -39,6 +40,7 @@ export async function getStudentEnrollments(profileId: string): Promise<Enrollme
         title,
         slug,
         thumbnail_url,
+        members_area_enabled,
         teacher:profiles(name)
       )
     `)
@@ -98,6 +100,7 @@ export async function getStudentEnrollments(profileId: string): Promise<Enrollme
         title: course.title,
         slug: course.slug,
         thumbnail_url: course.thumbnail_url,
+        members_area_enabled: course.members_area_enabled || false,
         teacher: course.teacher,
       },
       progress: {
@@ -247,6 +250,7 @@ export async function getEnrollmentsByStatus(
         title,
         slug,
         thumbnail_url,
+        members_area_enabled,
         teacher:profiles(name)
       )
     `)
@@ -310,6 +314,7 @@ export async function getEnrollmentsByStatus(
         title: course.title,
         slug: course.slug,
         thumbnail_url: course.thumbnail_url,
+        members_area_enabled: course.members_area_enabled || false,
         teacher: course.teacher,
       },
       progress: {

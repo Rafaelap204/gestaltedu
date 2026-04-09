@@ -179,12 +179,10 @@ export async function getAdminUsers(filters?: { role?: string; search?: string }
   await requireRole('admin')
   const supabase = await createClient()
   
+  // Buscar apenas da tabela profiles - user_id já está lá
   let query = supabase
     .from('profiles')
-    .select(`
-      *,
-      auth_users!inner(user_id:id, email)
-    `)
+    .select('*')
     .order('created_at', { ascending: false })
   
   if (filters?.role && filters.role !== 'all') {
@@ -198,26 +196,12 @@ export async function getAdminUsers(filters?: { role?: string; search?: string }
   const { data: users, error } = await query
   
   if (error) {
-    // Fallback without auth_users join
-    let fallbackQuery = supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (filters?.role && filters.role !== 'all') {
-      fallbackQuery = fallbackQuery.eq('role', filters.role)
-    }
-    
-    if (filters?.search) {
-      fallbackQuery = fallbackQuery.ilike('name', `%${filters.search}%`)
-    }
-    
-    const { data: fallbackUsers, error: fallbackError } = await fallbackQuery
-    
-    if (fallbackError) throw fallbackError
-    return fallbackUsers || []
+    console.error('Error fetching users:', error)
+    return []
   }
   
+  // O user_id na tabela profiles já é o auth user ID
+  // Precisamos garantir que ele está sendo retornado corretamente
   return users || []
 }
 

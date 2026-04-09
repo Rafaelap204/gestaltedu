@@ -19,6 +19,7 @@ interface CourseCardProps {
   variant?: "progress" | "recommendation" | "completed";
   price?: number;
   shortDescription?: string | null;
+  membersAreaEnabled?: boolean;
 }
 
 export function CourseCard({
@@ -33,6 +34,7 @@ export function CourseCard({
   variant = "progress",
   price,
   shortDescription,
+  membersAreaEnabled = false,
 }: CourseCardProps) {
   const isCompleted = progressPct >= 100;
 
@@ -122,7 +124,7 @@ export function CourseCard({
               size="sm"
               className="w-full"
             >
-              <Link href={`/app/courses/${slug}`}>
+              <Link href={membersAreaEnabled ? `/members-area/${id}` : `/app/course/${id}`}>
                 {isCompleted ? "Rever Curso" : "Continuar"}
               </Link>
             </Button>
@@ -135,7 +137,7 @@ export function CourseCard({
               size="sm"
               className="w-full"
             >
-              <Link href={`/app/courses/${slug}`}>
+              <Link href={`/app/course/${id}`}>
                 Rever Curso
               </Link>
             </Button>
