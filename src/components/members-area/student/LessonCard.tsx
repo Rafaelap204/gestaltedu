@@ -60,7 +60,7 @@ export function LessonCard({
   return (
     <Link
       href={watchUrl}
-      className={`flex-shrink-0 w-48 sm:w-56 rounded-xl overflow-hidden border transition-all duration-200 hover:scale-[1.03] hover:shadow-lg group cursor-pointer relative z-10 block ${
+      className={`flex-shrink-0 w-48 sm:w-56 rounded-xl overflow-hidden border transition-all duration-200 hover:scale-[1.03] hover:shadow-lg group cursor-pointer relative z-30 block ${
         isDark ? 'border-brand-gray-700' : 'border-brand-gray-200'
       } ${cardBg}`}
     >

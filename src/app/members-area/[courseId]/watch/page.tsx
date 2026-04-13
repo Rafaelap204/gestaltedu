@@ -17,89 +17,103 @@ interface WatchPageProps {
 }
 
 export default async function WatchPage({ params, searchParams }: WatchPageProps) {
-  const { courseId } = await params
-  const { lesson: lessonId } = await searchParams
+  try {
+    const { courseId } = await params
+    const { lesson: lessonId } = await searchParams
 
-  const session = await requireAuth(`/members-area/${courseId}/watch`)
-  const profileId = session.profile?.id
+    console.log('[WatchPage] Loading watch page:', { courseId, lessonId })
 
-  if (!profileId || !lessonId) {
-    redirect(`/members-area/${courseId}`)
-  }
+    const session = await requireAuth(`/members-area/${courseId}/watch`)
+    const profileId = session.profile?.id
 
-  const supabase = await createClient()
+    console.log('[WatchPage] Auth check:', { profileId: profileId || 'null', lessonId: lessonId || 'null' })
 
-  // Verify enrollment
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id, status')
-    .eq('user_id', profileId)
-    .eq('course_id', courseId)
-    .single()
+    if (!profileId || !lessonId) {
+      console.log('[WatchPage] Redirect: missing profileId or lessonId')
+      redirect(`/members-area/${courseId}`)
+    }
 
-  if (!enrollment || enrollment.status === 'cancelled') {
-    redirect('/app/my-courses')
-  }
+    const supabase = await createClient()
 
-  // Get lesson data with module info
-  const { data: lesson } = await supabase
-    .from('lessons')
-    .select(`
-      id,
-      title,
-      description,
-      video_url,
-      video_provider,
-      materials,
-      duration_seconds,
-      order,
-      module:modules(id, title, course_id)
-    `)
-    .eq('id', lessonId)
-    .single()
+    // Verify enrollment
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from('enrollments')
+      .select('id, status')
+      .eq('user_id', profileId)
+      .eq('course_id', courseId)
+      .single()
 
-  if (!lesson) {
-    redirect(`/members-area/${courseId}`)
-  }
+    console.log('[WatchPage] Enrollment check:', { enrollment: enrollment || 'null', error: enrollmentError?.message || 'none' })
 
-  // Verify lesson belongs to this course
-  const moduleData = lesson.module as any
-  if (moduleData?.course_id !== courseId) {
-    redirect(`/members-area/${courseId}`)
-  }
+    if (!enrollment || enrollment.status === 'cancelled') {
+      console.log('[WatchPage] Redirect: no enrollment or cancelled')
+      redirect('/app/my-courses')
+    }
 
-  // Get all lessons in this module for navigation
-  const { data: moduleLessons } = await supabase
+    // Get lesson data with module info
+    const { data: lesson, error: lessonError } = await supabase
+      .from('lessons')
+      .select(`
+        id,
+        title,
+        video_url,
+        video_provider,
+        materials,
+        duration_seconds,
+        order,
+        module:modules(id, title, course_id)
+      `)
+      .eq('id', lessonId)
+      .single()
+
+    console.log('[WatchPage] Lesson check:', { lesson: lesson ? 'found' : 'null', error: lessonError?.message || 'none' })
+
+    if (!lesson) {
+      console.log('[WatchPage] Redirect: lesson not found')
+      redirect(`/members-area/${courseId}`)
+    }
+
+    // Verify lesson belongs to this course
+    const moduleData = lesson.module as any
+    console.log('[WatchPage] Module check:', { moduleCourseId: moduleData?.course_id, expectedCourseId: courseId })
+    
+    if (moduleData?.course_id !== courseId) {
+      console.log('[WatchPage] Redirect: lesson does not belong to course')
+      redirect(`/members-area/${courseId}`)
+    }
+
+    // Get all lessons in this module for navigation
+    const { data: moduleLessons } = await supabase
     .from('lessons')
     .select('id, title, order')
     .eq('module_id', moduleData.id)
     .order('order', { ascending: true })
 
-  // Get lesson progress
-  const { data: progress } = await supabase
-    .from('lesson_progress')
-    .select('completed, progress_pct')
-    .eq('user_id', profileId)
-    .eq('lesson_id', lessonId)
-    .single()
+    // Get lesson progress
+    const { data: progress } = await supabase
+      .from('lesson_progress')
+      .select('completed, progress_pct')
+      .eq('user_id', profileId)
+      .eq('lesson_id', lessonId)
+      .single()
 
-  // Find prev/next lessons
-  const currentIndex = moduleLessons?.findIndex(l => l.id === lessonId) ?? -1
-  const prevLesson = currentIndex > 0 ? moduleLessons?.[currentIndex - 1] : null
-  const nextLesson = currentIndex < (moduleLessons?.length ?? 0) - 1 ? moduleLessons?.[currentIndex + 1] : null
+    // Find prev/next lessons
+    const currentIndex = moduleLessons?.findIndex(l => l.id === lessonId) ?? -1
+    const prevLesson = currentIndex > 0 ? moduleLessons?.[currentIndex - 1] : null
+    const nextLesson = currentIndex < (moduleLessons?.length ?? 0) - 1 ? moduleLessons?.[currentIndex + 1] : null
 
-  // Get course theme
-  const { data: course } = await supabase
-    .from('courses')
-    .select('title, members_area_theme')
-    .eq('id', courseId)
-    .single()
+    // Get course theme
+    const { data: course } = await supabase
+      .from('courses')
+      .select('title, members_area_theme')
+      .eq('id', courseId)
+      .single()
 
-  const theme = course?.members_area_theme as { primaryColor?: string; darkMode?: boolean } | null
-  const primaryColor = theme?.primaryColor || '#F97316'
+    const theme = course?.members_area_theme as { primaryColor?: string; darkMode?: boolean } | null
+    const primaryColor = theme?.primaryColor || '#F97316'
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    return (
+      <div className="min-h-screen bg-[#0a0a0a]">
       {/* Header */}
       <header className="bg-[#141414] border-b border-brand-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -203,10 +217,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             </form>
           </div>
 
-          {lesson.description && (
-            <p className="text-brand-gray-300 mb-6">{lesson.description}</p>
-          )}
-
           {/* Materials */}
           {lesson.materials && Array.isArray(lesson.materials) && lesson.materials.length > 0 && (
             <div className="mt-6">
@@ -216,6 +226,11 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           )}
         </div>
       </div>
-    </div>
-  )
+      </div>
+    )
+  } catch (error) {
+    console.error('[WatchPage] Error loading watch page:', error)
+    const { courseId } = await params
+    redirect(`/members-area/${courseId}`)
+  }
 }

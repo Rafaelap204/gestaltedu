@@ -117,8 +117,8 @@ export function ModuleCardRow({
       <div className="relative group">
         {/* Left scroll button */}
         <button
-          onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block"
+          onClick={(e) => { e.stopPropagation(); scroll('left'); }}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block"
           style={{ backgroundColor: isDark ? '#2a2a5a' : 'white', color: isDark ? 'white' : '#374151' }}
         >
           <ChevronLeft size={20} />
@@ -127,7 +127,7 @@ export function ModuleCardRow({
         {/* Cards container */}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth"
+          className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth relative z-20"
           style={{ scrollbarWidth: 'thin', msOverflowStyle: 'auto' }}
         >
           {module.lessons.map((lesson) => (
@@ -143,8 +143,8 @@ export function ModuleCardRow({
 
         {/* Right scroll button */}
         <button
-          onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block"
+          onClick={(e) => { e.stopPropagation(); scroll('right'); }}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block"
           style={{ backgroundColor: isDark ? '#2a2a5a' : 'white', color: isDark ? 'white' : '#374151' }}
         >
           <ChevronRight size={20} />

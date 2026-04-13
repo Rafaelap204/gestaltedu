@@ -12,9 +12,16 @@ interface VideoPlayerProps {
 export function VideoPlayer({ videoUrl, videoProvider, title }: VideoPlayerProps) {
   // Parse URL para obter embed URL
   const getEmbedUrl = (): string | null => {
-    if (!videoUrl) return null
+    if (!videoUrl) {
+      console.log('[VideoPlayer] No video URL provided')
+      return null
+    }
+    
+    console.log('[VideoPlayer] Parsing URL:', videoUrl, 'Provider:', videoProvider)
     
     const result = parseVideoUrl(videoUrl)
+    console.log('[VideoPlayer] Parse result:', result)
+    
     if (result.embedUrl) {
       return result.embedUrl
     }
